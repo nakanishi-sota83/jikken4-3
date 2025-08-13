@@ -1,0 +1,285 @@
+\documentclass{jlreq}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{indentfirst}
+\usepackage{fancybox, ascmac}
+\usepackage{listings}
+\usepackage{url}
+\lstset{
+    basicstyle=\ttfamily\small,
+    %numbers=left,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!50!black},
+    stringstyle=\color{orange},
+    frame=single,
+    tabsize=4,
+    breaklines=true
+}
+\title{Unityを用いたVRゲーム開発レポート}
+\author{学籍番号~1270352\\
+        中西~颯汰\\
+        グループ~05\\
+        }
+\date{\today}
+\begin{document}
+\maketitle
+\clearpage　
+\tableofcontents
+\clearpage
+\section{開発環境}
+本課題では、Unity 6とC\#を用いて3Dゲームを開発し、その基礎を学んだ。
+開発環境には、Unity 6、Meta XR All-in-One SDK、Meta Quest 3S、Meta Quest Linkアプリ、Visual Studioを使用した。
+PCのスペックは、Windows 11 Home、第13世代 Intel(R) Core(TM) i7-13620H プロセッサ、16.0 GB RAMだ。
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{version.png}
+    \caption{用いたPCのバージョン}
+    \label{fig:kadai1}
+\end{figure}
+\begin{itemize}
+  \item Unity 6: 3DゲームおよびVRコンテンツを開発するための主要エンジンである。
+  \item Meta Quest 3S: 開発したVRアプリを実機で動作確認するためのスタンドアロン型VRヘッドセット。
+  \item Meta XR All-in-One SDK: Meta Quest用のVRアプリをUnityで開発するための公式SDKで、手のトラッキングやインタラクション機能が含まれている。
+  \item Meta Quest Link アプリ: ヘッドセットとPCを接続し、Unityエディタから直接VRアプリを実行・デバッグするために使用する。
+  \item Visual Studio: C\#スクリプトの作成、編集、デバッグに使用する統合開発環境。
+\end{itemize}
+
+\section{実装した機能の詳細}
+まず初めにゲームの紹介をする。
+私たちのグループは図2の全体の写真のような3D ゲームを作った。
+動きは左端のカメラが視点となって動きコインをとるゲームである。
+コインはy軸方向に回転する。濃い緑色の棒状のものは回転してプレイヤーを邪魔する。
+コインの取り方は銃で撃つみたいにトリガーを引くと球が出てコインに当たるととれる。
+すべてのコインをとると終了となる。
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{zenntai.png}
+    \caption{全体の写真}
+    \label{fig:kadai1}
+\end{figure}
+\begin{itemize}
+  \item ステージ作成\\
+    Cubeを使用して床（Floor）と壁（Wall）を作成した。壁はCtrl+Dで複製することで、様々な配置を可能にした。
+  \item プレイヤーとコイン\\
+    プレイヤーは球体（Sphere）で、コインは円柱（Cylinder）で表現した。
+    プレイヤーにはPlayerMat、コインにはCoinMatという新しいマテリアルを作成し、好みの色を設定した。
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{koin.png}
+    \caption{プレイヤー視点からのコイン}
+    \label{fig:kadai1}
+\end{figure}
+  
+    \item プレイヤーの動き\\
+    プレイヤーの球体にはRigidbodyコンポーネントを追加し、物理挙動を制御できるようにした。
+    物理演算はUpdate()ではなくFixedUpdate()関数に記述している。
+    キーボードのW, A, S, Dキーでプレイヤーを動かすC\#スクリプトMovePlayerを実装した。  
+  \item カメラ制御\\
+    プレイヤーを追いかける三人称視点のカメラの動きを実装するために、FollowPlayerスクリプトを作成した。
+    LateUpdate()関数でカメラの位置をプレイヤーに追従させ、常に一定の距離を保つようにしている。
+  \item コインのインタラクション\\
+    コインにはRotateCoinスクリプトを追加し、Y軸周りに回転するアニメーションを実装した。
+    プレイヤーがコインに触れるとコインが消えるように、OnTriggerEnter関数を用いてコインを非表示にした。
+    コインにはCoinタグをつけ、プレイヤーのColliderとの衝突を検知している。
+  \item UI表示\\
+    ゲームのスコアと残り時間を表示するUIをTextMeshProを使用して実装した。
+    スコアはプレイヤーがコインを取得するたびに増え、タイマーはTime.deltaTimeを使用してリアルタイムにカウントアップするようにした。
+  \item ステージ遷移\\
+    シーンをStage1、Stage2のように複数作成し、すべてのコインを集めた後にスペースキーを押すことで次のステージへ進める機能を実装した。
+    シーンテンプレート機能を利用することで、新しいステージを効率的に作成することができた。
+
+  \end{itemize}
+
+
+\section{重要なスクリプト}
+\subsection{MovePlayer.csスクリプト}
+このスクリプトは、プレイヤーの移動、コインの取得、UIの更新、およびステージの切り替えを制御する役割を担っている。
+
+まず、Start()関数ではGetComponent<Rigidbody>()を呼び出し、プレイヤーオブジェクトにアタッチされているRigidbodyコンポーネントを取得する。
+これにより、物理演算に基づいた挙動を可能にしている。
+
+また、ゲーム開始時の初期設定としてポイントを0に、合計コイン数を設定している。ゲームの状況はUpdate()関数内で毎フレーム確認される。
+すべてのコインを回収していれば「Level Completed!」というメッセージを表示し、クリアしていなければタイマーを更新し続ける。
+
+衝突判定はprivate void OnTriggerEnter(Collider other)関数を用いており、Is TriggerがオンになっているColliderを持つオブジェクトと衝突したときにこの関数が呼び出される。
+この関数内で、衝突した相手が「Coin」タグを持っているかをother.gameObject.CompareTag("Coin")でチェックし、一致すればother.gameObject.SetActive(false)でコインを非表示にし、pointsを1つ加算する。
+ステージクリア後にVRコントローラーのAボタンを押すと、LoadNextScene()関数が呼び出され、SceneManager.GetActiveScene().buildIndexで取得した現在のシーンのインデックスを基に、次のシーンへ遷移する。
+\begin{lstlisting}
+using UnityEngine;
+using TMPro;
+using UnityEngine.SceneManagement;
+using UnityEditor.Experimental.GraphView;
+using System.Collections;
+using System.Collections.Generic;
+
+public class MovePlayer : MonoBehaviour
+{
+    private Rigidbody rb;
+    
+    public TextMeshProUGUI pointsText;
+    public TextMeshProUGUI timerText;
+
+    private int points;
+    private int totalCoins;
+    private float timer;
+
+        void Start()
+    {
+        rb = GetComponent<Rigidbody>();
+        points = 0;
+        totalCoins = GameObject.FindGameObjectsWithTag("Coin").Length;
+        totalCoins = 1;
+    }
+
+  
+    void Update()
+    {
+        if (points >= totalCoins)
+        {
+            timerText.text = "Time: " + timer.ToString("F2") + "s" + "\nLevel Completed!";
+            if(Input.GetKeyDown(KeyCode.Space))
+            {
+                LoadNextScene();
+            }
+        }
+        else
+        {
+            // pointsText.text = "Score: " + points.ToString();
+            timer += Time.deltaTime;
+            timerText.text = "Time: " + timer.ToString("F2") + "s";
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.CompareTag("Coin")) 
+        {
+            other.gameObject.SetActive(false);
+            points += 1;
+        }
+    }
+
+    public void LoadNextScene()
+    {
+        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
+        int totalScenes = SceneManager.sceneCountInBuildSettings;
+
+        if(points >= totalCoins && OVRInput.GetDown(OVRInput.RawButton.A))
+        {
+            SceneManager.LoadScene(currentSceneIndex + 1);
+        }
+        else
+        {
+            Debug.Log("No more stages!");
+        }
+    }
+}
+
+\end{lstlisting}
+\subsection{FiringBullet.csスクリプト}
+このスクリプトは、VRコントローラーの入力に対応した独自のゲームプレイ機能、つまり弾の発射を実装している。
+
+Update()関数内でOVRInput.GetDown(OVRInput.Button.SecondaryIndexTrigger)を使い、VRコントローラーのトリガーが引かれた瞬間を検知する。
+検知すると、prefabとして設定された弾のオブジェクトをInstantiateで生成する。
+生成位置はcameraTransform.position、向きはcameraTransform.forwardを基準としており、プレイヤーの視点から弾が発射されるように設計されている。
+発射された弾にはspawnBallRB.linearVelocity = transform.forward * spawnSpeedというコードで線形速度が与えられ、前方に飛んでいく。
+また、このスクリプトはメモリの使用量を抑えるための工夫がされている。Queue<GameObject> clonesというデータ構造を使って、生成した弾をキューに格納し、弾の数が最大値（maxClones）を超えると、clones.Dequeue()で最も古い弾を取得し、Destroy(oldClone)で削除することで、パフォーマンスの低下を防いでいる。Debug.Log("現在の複製数: " + clones.Count)により、弾の数が常に監視されている。
+
+しかしながら、不具合が起こり発射される玉の数が発射するたびに増えていくような下の画像のような事態が起こってしまった。
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{jyudan.png}
+    \caption{銃弾が暴発してしまう不具合の画像}
+    \label{fig:kadai1}
+\end{figure}
+\begin{lstlisting}
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using TMPro;
+using UnityEngine.SceneManagement;
+
+public class FiringBullet : MonoBehaviour
+{
+    public GameObject prefab;
+    public float spawnSpeed = 10f;
+    public float ballLifetime = 5f;
+    public Transform cameraTransform;
+    public int maxClones = 10;
+    private Queue<GameObject> clones = new Queue<GameObject>();
+
+    void Update()
+    {
+        if (OVRInput.GetDown(OVRInput.Button.SecondaryIndexTrigger))
+        {
+            Vector3 spawnPos = cameraTransform.position;
+
+            Vector3 direction = cameraTransform.forward;
+
+            Quaternion spawnRot = Quaternion.LookRotation(direction);
+
+            GameObject clone = Instantiate(prefab, spawnPos, spawnRot);
+            Rigidbody spawnBallRB = clone.GetComponent<Rigidbody>();
+            clones.Enqueue(clone);
+            
+            if (spawnBallRB != null)
+            {
+                spawnBallRB.linearVelocity = transform.forward * spawnSpeed;
+            }
+            if (clones.Count > maxClones)
+            {
+                GameObject oldClone = clones.Dequeue();
+                if (oldClone != null)
+                    Destroy(oldClone);
+                
+            }
+        }
+        Debug.Log(clones.Count);
+    }
+}
+\end{lstlisting}
+\section{グループごとに開発した内容}
+\subsection{ステージ設計における創意工夫}
+私たちのグループでは、提供されたシンプルな迷路をベースに、プレイヤーの邪魔をする回転する棒状の障害物を配置した。
+また、プレイヤーが銃でコインを撃って取得する仕組みを導入することで、従来のボールを転がすゲームとは異なる、よりインタラクティブな体験を目指した。
+これにより、プレイヤーは単に移動するだけでなく、エイムの正確さも求められるようになった。
+\subsection{ゲームバランスの調整}
+ゲームの難易度は、回転する障害物の速度や、コインの配置場所を調整することでバランスを取った。
+特に、プレイヤーがすべてのコインを回収するとステージがクリアとなるため、コインの配置はプレイヤーが戦略を立てる必要があるように工夫した。
+\subsection{VR体験における快適性}
+VR体験における快適性を考慮し、ゲーム中に視点の急激な変化がないようにカメラの動きを調整した。
+また、UIはVR空間内でも視認しやすいように配置し、Canvas Render ModeをWorld Spaceに設定することで、VR環境での自然な表示を実現した。
+
+\section{問題点とその考察}
+開発したゲームには、いくつかの問題点と改善すべき課題が明らかになった。
+
+まず、FiringBullet.csスクリプトでは、弾丸の数が発射するたびに増え続ける不具合が発生した。
+この問題は、Queueを使用して古い弾を削除するロジックを実装したにもかかわらず発生した。
+原因として、弾を生成するコードとキューに格納するコードの実行順序、またはDestroy関数の呼び出しタイミングに問題があった可能性が考えられる。
+今後の改善策としては、弾の生成と削除のロジックをより厳密に見直し、弾がゲーム画面上に残り続けないように修正する必要がある。
+
+次に、ステージに配置された回転する壁が、プレイヤーや弾丸をすり抜ける現象がたまに発生した。これは、物理演算の更新頻度とオブジェクトの速度のバランスが取れていないことに起因すると考えられる。
+FixedUpdate()関数は物理演算のために一定間隔で実行されるが、オブジェクトの速度が速すぎると、フレーム間で衝突が検知されない「トンネリング現象」が起こることがある。
+この問題を解決するためには、RigidbodyのCollision DetectionモードをDiscreteからContinuousに変更するか、物理演算の更新間隔をより細かく設定する、または壁のColliderのサイズを調整するなどの対策が考えられる。
+
+\section{まとめ・結論}
+本レポートは、Unity 6とMeta Quest 3Sを基盤としたVRゲーム開発プロジェクトの成果を示すものである。
+Windows 11 Home PCを開発環境として、Unity 6とMeta XR All-in-One SDKを用いて、VRコントローラーによるインタラクティブなゲームを開発した。
+
+完成したゲームは、VRコントローラーのトリガーを引くことで弾を発射し、迷路内に配置されたコインを回収するという独自のゲームメカニクスを備えている。
+これを実現するため、ゲームの進行、UI表示、衝突判定、およびシーン遷移を管理する。
+
+MovePlayer.csと、弾の発射機能を制御するFiringBullet.csという2つの主要なC\#スクリプトを実装した。
+FiringBullet.csでは、VRコントローラーの入力を検知するOVRInput.GetDownを使用し、メモリ効率を考慮して不要な弾を削除する工夫を施した。
+ステージ設計においては、回転する障害物や巧妙なコイン配置でゲームバランスを調整し、快適なVR体験を提供することを目指した。
+
+
+\begin{thebibliography}{9}
+\bibitem{page1}
+情報学群実験第4~Unity・バーチャルリアリティ入門 ~~~~~繁桝博昭、ハリン ハプアーラッチ
+\bibitem{page2}
+Unity公式チュートリアル\\
+\url{https://learn.unity.com/pathway/unity-essentials}
+\end{thebibliography}
+\end{document}
